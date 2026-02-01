@@ -27,35 +27,53 @@ async function copyIfExists(src, dst) {
 }
 
 async function run() {
+    console.log(`[${pkg.name}] postinstall started`);
+    const startTime = Date.now();
+
     if (process.env.MESSAGIX_SKIP_POSTINSTALL === "true") {
         console.log(`[${pkg.name}] Skipping postinstall (MESSAGIX_SKIP_POSTINSTALL=true)`);
         return;
     }
 
+    console.log(`[${pkg.name}] Detecting platform...`);
     const { triplet, ext } = detectPlatform();
+    console.log(`[${pkg.name}] Platform: ${triplet}, ext: ${ext}`);
+
     const buildOut = join(__dirname, "..", "build", `messagix.${ext}`);
+    console.log(`[${pkg.name}] Build output path: ${buildOut}`);
 
     // 1) Prefer local prebuilt shipped in npm tarball
     const prebuiltDir = join(__dirname, "..", "prebuilt", triplet);
     const prebuilt = join(prebuiltDir, `messagix.${ext}`);
+    console.log(`[${pkg.name}] Checking local prebuilt at: ${prebuilt}`);
     if (await copyIfExists(prebuilt, buildOut)) {
         console.log(`[${pkg.name}] Using local prebuilt for ${triplet}`);
         if (process.env.MESSAGIX_KEEP_PREBUILT !== "true") {
             try {
                 await rm(prebuiltDir, { recursive: true, force: true });
-            } catch (error) {
-                console.error(error);
+            } catch {
+                //
             }
         }
+        console.log(`[${pkg.name}] postinstall completed in ${Date.now() - startTime}ms`);
         return;
     }
     console.log(`[${pkg.name}] No local prebuilt found`);
 
     // 2) Try remote prebuilt from GitHub Releases
+    console.log(`[${pkg.name}] Attempting to download remote prebuilt...`);
+    const downloadStart = Date.now();
     try {
-        if (await downloadPrebuilt()) return;
-    } catch (error) {
-        console.error(error);
+        if (await downloadPrebuilt()) {
+            console.log(`[${pkg.name}] Download completed in ${Date.now() - downloadStart}ms`);
+            console.log(`[${pkg.name}] postinstall completed in ${Date.now() - startTime}ms`);
+            return;
+        }
+    } catch (err) {
+        console.log(
+            `[${pkg.name}] Download failed after ${Date.now() - downloadStart}ms:`,
+            err?.message || String(err),
+        );
     }
 
     // 3) No prebuilt available. Try local build if allowed
@@ -83,6 +101,9 @@ async function run() {
     );
 }
 
-run().catch(err => {
-    console.error(`[${pkg.name}] postinstall failed:`, err?.message || String(err));
-});
+run()
+    .then(() => process.exit(0))
+    .catch(err => {
+        console.error(`[${pkg.name}] postinstall failed:`, err?.message || String(err));
+        process.exit(1);
+    });
