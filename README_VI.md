@@ -167,3 +167,8 @@ Theo License của mautrix-meta
 - [facebook-chat-api](https://github.com/Schmavery/facebook-chat-api) - Truyền cảm hứng cho API Style
 - [whatsmeow-node](https://github.com/vinikjkkj/whatsmeow-node) - Tham khảo cách viết thư viện NodeJS với FFI.
 - [koffi](https://codeberg.org/Koromix/rygel/src/branch/master/src/koffi) - Fast and easy-to-use C FFI module for Node.js
+
+## Tuyên bố miễn trừ trách nhiệm
+
+> Tất cả tên sản phẩm và công ty là nhãn hiệu™ hoặc nhãn hiệu đã đăng ký® của chủ sở hữu tương ứng. Việc sử dụng chúng không ngụ ý bất kỳ sự liên kết hoặc chứng thực nào từ họ.
+> "Facebook", "Messenger", "Meta", "Instagram" là nhãn hiệu đã đăng ký của Meta, Inc., được sử dụng theo thỏa thuận cấp phép.
