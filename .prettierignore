@@ -1,0 +1,8 @@
+build
+dist
+node_modules
+package*.json
+tsconfig.json
+meta
+*.md
+.github

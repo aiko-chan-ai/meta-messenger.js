@@ -71,9 +71,9 @@ const fns = {
 } as const;
 
 interface JsonResp<T = unknown> {
-    ok: boolean
-    data?: T
-    error?: string
+    ok: boolean;
+    data?: T;
+    error?: string;
 }
 
 function call<T>(fn: keyof typeof fns, payload: unknown): T {
@@ -93,8 +93,7 @@ function callAsync<T>(fn: keyof typeof fns, payload: unknown): Promise<T> {
             try {
                 const result = call<T>(fn, payload);
                 resolve(result);
-            }
-            catch (err) {
+            } catch (err) {
                 reject(err);
             }
         }, 0);
@@ -103,40 +102,39 @@ function callAsync<T>(fn: keyof typeof fns, payload: unknown): Promise<T> {
 
 export const native = {
     newClient: (cfg: {
-        cookies: Record<string, string>
-        platform?: string
-        devicePath?: string
-        deviceData?: string
-        logLevel?: string
+        cookies: Record<string, string>;
+        platform?: string;
+        devicePath?: string;
+        deviceData?: string;
+        logLevel?: string;
     }) => call<{ handle: number }>("MxNewClient", cfg),
 
     connect: (handle: number) =>
         call<{
-            user: { id: number; name: string; username: string }
-            initialData: { threads: unknown[]; messages: unknown[] }
+            user: { id: number; name: string; username: string };
+            initialData: { threads: unknown[]; messages: unknown[] };
         }>("MxConnect", { handle }),
 
     connectE2EE: (handle: number) => callAsync<unknown>("MxConnectE2EE", { handle }),
 
     disconnect: (handle: number) => call<unknown>("MxDisconnect", { handle }),
 
-    isConnected: (handle: number) =>
-        call<{ connected: boolean; e2eeConnected: boolean }>("MxIsConnected", { handle }),
+    isConnected: (handle: number) => call<{ connected: boolean; e2eeConnected: boolean }>("MxIsConnected", { handle }),
 
     sendMessage: (
         handle: number,
         options: {
-            threadId: number
-            text: string
-            replyToId?: string
-            mentionIds?: number[]
-            mentionOffsets?: number[]
-            mentionLengths?: number[]
-            attachmentFbIds?: number[]
-            stickerId?: number
-            url?: string
-            isE2EE?: boolean
-            e2eeChatJid?: string
+            threadId: number;
+            text: string;
+            replyToId?: string;
+            mentionIds?: number[];
+            mentionOffsets?: number[];
+            mentionLengths?: number[];
+            attachmentFbIds?: number[];
+            stickerId?: number;
+            url?: string;
+            isE2EE?: boolean;
+            e2eeChatJid?: string;
         },
     ) => callAsync<{ messageId: string; timestampMs: number }>("MxSendMessage", { handle, options }),
 
@@ -146,16 +144,10 @@ export const native = {
     editMessage: (handle: number, messageId: string, newText: string) =>
         callAsync<unknown>("MxEditMessage", { handle, messageId, newText }),
 
-    unsendMessage: (handle: number, messageId: string) =>
-        callAsync<unknown>("MxUnsendMessage", { handle, messageId }),
+    unsendMessage: (handle: number, messageId: string) => callAsync<unknown>("MxUnsendMessage", { handle, messageId }),
 
-    sendTyping: (
-        handle: number,
-        threadId: number,
-        isTyping: boolean,
-        isGroup: boolean,
-        threadType: number,
-    ) => callAsync<unknown>("MxSendTyping", { handle, threadId, isTyping, isGroup, threadType }),
+    sendTyping: (handle: number, threadId: number, isTyping: boolean, isGroup: boolean, threadType: number) =>
+        callAsync<unknown>("MxSendTyping", { handle, threadId, isTyping, isGroup, threadType }),
 
     markRead: (handle: number, threadId: number, watermarkTs?: number) =>
         callAsync<unknown>("MxMarkRead", { handle, threadId, watermarkTs: watermarkTs || 0 }),
@@ -163,37 +155,31 @@ export const native = {
     uploadMedia: (
         handle: number,
         options: {
-            threadId: number
-            filename: string
-            mimeType: string
-            data: number[]
-            isVoice?: boolean
+            threadId: number;
+            filename: string;
+            mimeType: string;
+            data: number[];
+            isVoice?: boolean;
         },
     ) => callAsync<{ fbId: number; filename: string }>("MxUploadMedia", { handle, options }),
 
-    sendImage: (
-        handle: number,
-        options: { threadId: number; data: number[]; filename: string; caption?: string },
-    ) => callAsync<{ messageId: string; timestampMs: number }>("MxSendImage", { handle, options }),
+    sendImage: (handle: number, options: { threadId: number; data: number[]; filename: string; caption?: string }) =>
+        callAsync<{ messageId: string; timestampMs: number }>("MxSendImage", { handle, options }),
 
-    sendVideo: (
-        handle: number,
-        options: { threadId: number; data: number[]; filename: string; caption?: string },
-    ) => callAsync<{ messageId: string; timestampMs: number }>("MxSendVideo", { handle, options }),
+    sendVideo: (handle: number, options: { threadId: number; data: number[]; filename: string; caption?: string }) =>
+        callAsync<{ messageId: string; timestampMs: number }>("MxSendVideo", { handle, options }),
 
-    sendVoice: (
-        handle: number,
-        options: { threadId: number; data: number[]; filename: string },
-    ) => callAsync<{ messageId: string; timestampMs: number }>("MxSendVoice", { handle, options }),
+    sendVoice: (handle: number, options: { threadId: number; data: number[]; filename: string }) =>
+        callAsync<{ messageId: string; timestampMs: number }>("MxSendVoice", { handle, options }),
 
     sendFile: (
         handle: number,
         options: {
-            threadId: number
-            data: number[]
-            filename: string
-            mimeType: string
-            caption?: string
+            threadId: number;
+            data: number[];
+            filename: string;
+            mimeType: string;
+            caption?: string;
         },
     ) => callAsync<{ messageId: string; timestampMs: number }>("MxSendFile", { handle, options }),
 
@@ -203,20 +189,17 @@ export const native = {
     createThread: (handle: number, options: { userId: number }) =>
         callAsync<{ threadId: number }>("MxCreateThread", { handle, options }),
 
-    getUserInfo: (
-        handle: number,
-        options: { userId: number },
-    ) =>
+    getUserInfo: (handle: number, options: { userId: number }) =>
         callAsync<{
-            id: number
-            name: string
-            firstName?: string
-            username?: string
-            profilePictureUrl?: string
-            isMessengerUser?: boolean
-            isVerified?: boolean
-            gender?: number
-            canViewerMessage?: boolean
+            id: number;
+            name: string;
+            firstName?: string;
+            username?: string;
+            profilePictureUrl?: string;
+            isMessengerUser?: boolean;
+            isVerified?: boolean;
+            gender?: number;
+            canViewerMessage?: boolean;
         }>("MxGetUserInfo", { handle, options }),
 
     setGroupPhoto: (handle: number, threadId: number, data: string, mimeType: string) =>
@@ -237,17 +220,10 @@ export const native = {
             options,
         }),
 
-    pollEvents: (handle: number, timeoutMs: number) =>
-        callAsync<unknown>("MxPollEvents", { handle, timeoutMs }),
+    pollEvents: (handle: number, timeoutMs: number) => callAsync<unknown>("MxPollEvents", { handle, timeoutMs }),
 
     // E2EE functions
-    sendE2EEMessage: (
-        handle: number,
-        chatJid: string,
-        text: string,
-        replyToId?: string,
-        replyToSenderJid?: string,
-    ) =>
+    sendE2EEMessage: (handle: number, chatJid: string, text: string, replyToId?: string, replyToSenderJid?: string) =>
         callAsync<{ messageId: string; timestampMs: number }>("MxSendE2EEMessage", {
             handle,
             chatJid,
@@ -256,13 +232,8 @@ export const native = {
             replyToSenderJid,
         }),
 
-    sendE2EEReaction: (
-        handle: number,
-        chatJid: string,
-        messageId: string,
-        senderJid: string,
-        emoji: string,
-    ) => callAsync<unknown>("MxSendE2EEReaction", { handle, chatJid, messageId, senderJid, emoji }),
+    sendE2EEReaction: (handle: number, chatJid: string, messageId: string, senderJid: string, emoji: string) =>
+        callAsync<unknown>("MxSendE2EEReaction", { handle, chatJid, messageId, senderJid, emoji }),
 
     sendE2EETyping: (handle: number, chatJid: string, isTyping: boolean) =>
         callAsync<unknown>("MxSendE2EETyping", { handle, chatJid, isTyping }),
@@ -273,72 +244,71 @@ export const native = {
     unsendE2EEMessage: (handle: number, chatJid: string, messageId: string) =>
         callAsync<unknown>("MxUnsendE2EEMessage", { handle, chatJid, messageId }),
 
-    getDeviceData: (handle: number) =>
-        call<{ deviceData: string }>("MxGetDeviceData", { handle }),
+    getDeviceData: (handle: number) => call<{ deviceData: string }>("MxGetDeviceData", { handle }),
 
     // E2EE Media functions
     sendE2EEImage: (
         handle: number,
         options: {
-            chatJid: string
-            data: number[]
-            mimeType: string
-            caption?: string
-            width?: number
-            height?: number
-            replyToId?: string
-            replyToSenderJid?: string
+            chatJid: string;
+            data: number[];
+            mimeType: string;
+            caption?: string;
+            width?: number;
+            height?: number;
+            replyToId?: string;
+            replyToSenderJid?: string;
         },
     ) => callAsync<{ messageId: string; timestampMs: number }>("MxSendE2EEImage", { handle, options }),
 
     sendE2EEVideo: (
         handle: number,
         options: {
-            chatJid: string
-            data: number[]
-            mimeType: string
-            caption?: string
-            width?: number
-            height?: number
-            duration?: number
-            replyToId?: string
-            replyToSenderJid?: string
+            chatJid: string;
+            data: number[];
+            mimeType: string;
+            caption?: string;
+            width?: number;
+            height?: number;
+            duration?: number;
+            replyToId?: string;
+            replyToSenderJid?: string;
         },
     ) => callAsync<{ messageId: string; timestampMs: number }>("MxSendE2EEVideo", { handle, options }),
 
     sendE2EEAudio: (
         handle: number,
         options: {
-            chatJid: string
-            data: number[]
-            mimeType: string
-            duration?: number
-            ptt?: boolean // Push-to-talk (voice message)
-            replyToId?: string
-            replyToSenderJid?: string
+            chatJid: string;
+            data: number[];
+            mimeType: string;
+            duration?: number;
+            ptt?: boolean; // Push-to-talk (voice message)
+            replyToId?: string;
+            replyToSenderJid?: string;
         },
     ) => callAsync<{ messageId: string; timestampMs: number }>("MxSendE2EEAudio", { handle, options }),
 
     sendE2EEDocument: (
         handle: number,
         options: {
-            chatJid: string
-            data: number[]
-            filename: string
-            mimeType: string
-            replyToId?: string
-            replyToSenderJid?: string
+            chatJid: string;
+            data: number[];
+            filename: string;
+            mimeType: string;
+            replyToId?: string;
+            replyToSenderJid?: string;
         },
     ) => callAsync<{ messageId: string; timestampMs: number }>("MxSendE2EEDocument", { handle, options }),
 
     sendE2EESticker: (
         handle: number,
         options: {
-            chatJid: string
-            data: number[]
-            mimeType: string
-            replyToId?: string
-            replyToSenderJid?: string
+            chatJid: string;
+            data: number[];
+            mimeType: string;
+            replyToId?: string;
+            replyToSenderJid?: string;
         },
     ) => callAsync<{ messageId: string; timestampMs: number }>("MxSendE2EESticker", { handle, options }),
 

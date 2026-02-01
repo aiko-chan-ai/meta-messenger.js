@@ -17,37 +17,36 @@ import type {
     SearchUserResult,
     SendMessageOptions,
     SendMessageResult,
-    Thread,
     UploadMediaResult,
     User,
     UserInfo,
 } from "./types.js";
 
 declare class TypedEventEmitter<T> {
-    on<K extends keyof T>(event: K, listener: (...args: T[K] extends unknown[] ? T[K] : never) => void): this
-    once<K extends keyof T>(event: K, listener: (...args: T[K] extends unknown[] ? T[K] : never) => void): this
-    off<K extends keyof T>(event: K, listener: (...args: T[K] extends unknown[] ? T[K] : never) => void): this
-    emit<K extends keyof T>(event: K, ...args: T[K] extends unknown[] ? T[K] : never): boolean
-    removeAllListeners<K extends keyof T>(event?: K): this
+    on<K extends keyof T>(event: K, listener: (...args: T[K] extends unknown[] ? T[K] : never) => void): this;
+    once<K extends keyof T>(event: K, listener: (...args: T[K] extends unknown[] ? T[K] : never) => void): this;
+    off<K extends keyof T>(event: K, listener: (...args: T[K] extends unknown[] ? T[K] : never) => void): this;
+    emit<K extends keyof T>(event: K, ...args: T[K] extends unknown[] ? T[K] : never): boolean;
+    removeAllListeners<K extends keyof T>(event?: K): this;
 }
 
 export interface ClientEventMap {
-  ready: [{ isNewSession: boolean }]
-  fullyReady: []
-  reconnected: []
-  disconnected: [{ isE2EE?: boolean }]
-  error: [Error]
-  message: [Message]
-  messageEdit: [{ messageId: string; threadId: number; newText: string; editCount?: number; timestampMs?: number }]
-  messageUnsend: [{ messageId: string; threadId: number }]
-  reaction: [{ messageId: string; threadId: number; actorId: number; reaction: string; timestampMs?: number }]
-  typing: [{ threadId: number; senderId: number; isTyping: boolean }]
-  readReceipt: [{ threadId: number; readerId: number; readWatermarkTimestampMs: number; timestampMs?: number }]
-  e2eeConnected: []
-  e2eeMessage: [E2EEMessage]
-  e2eeReaction: [{ messageId: string; chatJid: string; senderJid: string; senderId?: number; reaction: string }]
-  e2eeReceipt: [{ type: string; chat: string; sender: string; messageIds: string[] }]
-  deviceDataChanged: [{ deviceData: string }]
+    ready: [{ isNewSession: boolean }];
+    fullyReady: [];
+    reconnected: [];
+    disconnected: [{ isE2EE?: boolean }];
+    error: [Error];
+    message: [Message];
+    messageEdit: [{ messageId: string; threadId: number; newText: string; editCount?: number; timestampMs?: number }];
+    messageUnsend: [{ messageId: string; threadId: number }];
+    reaction: [{ messageId: string; threadId: number; actorId: number; reaction: string; timestampMs?: number }];
+    typing: [{ threadId: number; senderId: number; isTyping: boolean }];
+    readReceipt: [{ threadId: number; readerId: number; readWatermarkTimestampMs: number; timestampMs?: number }];
+    e2eeConnected: [];
+    e2eeMessage: [E2EEMessage];
+    e2eeReaction: [{ messageId: string; chatJid: string; senderJid: string; senderId?: number; reaction: string }];
+    e2eeReceipt: [{ type: string; chat: string; sender: string; messageIds: string[] }];
+    deviceDataChanged: [{ deviceData: string }];
 }
 
 /**
@@ -88,11 +87,11 @@ export class Client extends (EventEmitter as new () => TypedEventEmitter<ClientE
     private pendingEvents: ClientEvent[] = [];
 
     /**
-   * Create a new Messenger client
-   *
-   * @param cookies - Authentication cookies
-   * @param options - Client options
-   */
+     * Create a new Messenger client
+     *
+     * @param cookies - Authentication cookies
+     * @param options - Client options
+     */
     constructor(cookies: Cookies, options: ClientOptions = {}) {
         super();
         this.cookies = cookies;
@@ -107,29 +106,29 @@ export class Client extends (EventEmitter as new () => TypedEventEmitter<ClientE
     }
 
     /**
-   * Get the current user info
-   */
+     * Get the current user info
+     */
     get user(): User | null {
         return this._user;
     }
 
     /**
-   * Get the current user's Facebook ID
-   */
+     * Get the current user's Facebook ID
+     */
     get currentUserId(): number | null {
         return this._user?.id ?? null;
     }
 
     /**
-   * Get initial sync data (threads and messages)
-   */
+     * Get initial sync data (threads and messages)
+     */
     get initialData(): InitialData | null {
         return this._initialData;
     }
 
     /**
-   * Check if client is fully ready (socket ready + E2EE connected if enabled)
-   */
+     * Check if client is fully ready (socket ready + E2EE connected if enabled)
+     */
     get isFullyReady(): boolean {
         if (!this._socketReady) return false;
         if (this.options.enableE2EE && !this._e2eeConnected) return false;
@@ -137,40 +136,38 @@ export class Client extends (EventEmitter as new () => TypedEventEmitter<ClientE
     }
 
     /**
-   * Check if client is connected
-   */
+     * Check if client is connected
+     */
     get isConnected(): boolean {
         if (!this.handle) return false;
         try {
             const status = native.isConnected(this.handle);
             return status.connected;
-        }
-        catch {
+        } catch {
             return false;
         }
     }
 
     /**
-   * Check if E2EE is connected
-   */
+     * Check if E2EE is connected
+     */
     get isE2EEConnected(): boolean {
         if (!this.handle) return false;
         try {
             const status = native.isConnected(this.handle);
             return status.e2eeConnected;
-        }
-        catch {
+        } catch {
             return false;
         }
     }
 
     /**
-   * Connect to Messenger
-   *
-   * @returns User info and initial data
-   */
+     * Connect to Messenger
+     *
+     * @returns User info and initial data
+     */
     async connect(): Promise<{ user: User; initialData: InitialData }> {
-    // Create native client
+        // Create native client
         const { handle } = native.newClient({
             cookies: this.cookies as Record<string, string>,
             platform: this.options.platform,
@@ -202,18 +199,18 @@ export class Client extends (EventEmitter as new () => TypedEventEmitter<ClientE
     }
 
     /**
-   * Connect E2EE (end-to-end encryption)
-   * @warn This Promise is not resolved after the connection setup is completed; instead, it is resolved after the function finishes executing.\
-   * You should not rely on this Promise to wait for the E2EE connection to be fully established.
-   */
+     * Connect E2EE (end-to-end encryption)
+     * @warn This Promise is not resolved after the connection setup is completed; instead, it is resolved after the function finishes executing.\
+     * You should not rely on this Promise to wait for the E2EE connection to be fully established.
+     */
     async connectE2EE(): Promise<void> {
         if (!this.handle) throw new Error("Not connected");
         await native.connectE2EE(this.handle);
     }
 
     /**
-   * Disconnect from Messenger
-   */
+     * Disconnect from Messenger
+     */
     async disconnect(): Promise<void> {
         this.stopEventLoop();
         if (this.handle) {
@@ -223,16 +220,13 @@ export class Client extends (EventEmitter as new () => TypedEventEmitter<ClientE
     }
 
     /**
-   * Send a text message
-   *
-   * @param threadId - Thread ID to send to
-   * @param options - Message options (text, reply, mentions)
-   * @returns Send result with message ID
-   */
-    async sendMessage(
-        threadId: number,
-        options: SendMessageOptions | string,
-    ): Promise<SendMessageResult> {
+     * Send a text message
+     *
+     * @param threadId - Thread ID to send to
+     * @param options - Message options (text, reply, mentions)
+     * @returns Send result with message ID
+     */
+    async sendMessage(threadId: number, options: SendMessageOptions | string): Promise<SendMessageResult> {
         if (!this.handle) throw new Error("Not connected");
 
         const opts = typeof options === "string" ? { text: options } : options;
@@ -248,75 +242,71 @@ export class Client extends (EventEmitter as new () => TypedEventEmitter<ClientE
     }
 
     /**
-   * Send / Remove a reaction to a message
-   *
-   * @param threadId - Thread ID
-   * @param messageId - Message ID to react to
-   * @param emoji - Reaction emoji (to remove, simply omit this parameter)
-   */
+     * Send / Remove a reaction to a message
+     *
+     * @param threadId - Thread ID
+     * @param messageId - Message ID to react to
+     * @param emoji - Reaction emoji (to remove, simply omit this parameter)
+     */
     async sendReaction(threadId: number, messageId: string, emoji?: string): Promise<void> {
         if (!this.handle) throw new Error("Not connected");
         await native.sendReaction(this.handle, threadId, messageId, emoji || "");
     }
 
     /**
-   * Edit a message
-   *
-   * @param messageId - Message ID to edit
-   * @param newText - New text content
-   */
+     * Edit a message
+     *
+     * @param messageId - Message ID to edit
+     * @param newText - New text content
+     */
     async editMessage(messageId: string, newText: string): Promise<void> {
         if (!this.handle) throw new Error("Not connected");
         await native.editMessage(this.handle, messageId, newText);
     }
 
     /**
-   * Unsend/delete a message
-   *
-   * @param messageId - Message ID to unsend
-   */
+     * Unsend/delete a message
+     *
+     * @param messageId - Message ID to unsend
+     */
     async unsendMessage(messageId: string): Promise<void> {
         if (!this.handle) throw new Error("Not connected");
         await native.unsendMessage(this.handle, messageId);
     }
 
     /**
-   * Send typing indicator
-   *
-   * @param threadId - Thread ID
-   * @param isTyping - Whether typing or not
-   * @param isGroup - Whether it's a group chat
-   */
-    async sendTypingIndicator(
-        threadId: number,
-        isTyping: boolean = true,
-        isGroup: boolean = false,
-    ): Promise<void> {
+     * Send typing indicator
+     *
+     * @param threadId - Thread ID
+     * @param isTyping - Whether typing or not
+     * @param isGroup - Whether it's a group chat
+     */
+    async sendTypingIndicator(threadId: number, isTyping: boolean = true, isGroup: boolean = false): Promise<void> {
         if (!this.handle) throw new Error("Not connected");
         await native.sendTyping(this.handle, threadId, isTyping, isGroup, isGroup ? 2 : 1);
     }
 
     /**
-   * Mark messages as read
-   *
-   * @param threadId - Thread ID
-   * @param watermarkTs - Timestamp to mark read up to (optional)
-   */
+     * Mark messages as read
+     *
+     * @param threadId - Thread ID
+     * @param watermarkTs - Timestamp to mark read up to (optional)
+     */
     async markAsRead(threadId: number, watermarkTs?: number): Promise<void> {
         if (!this.handle) throw new Error("Not connected");
         await native.markRead(this.handle, threadId, watermarkTs);
     }
 
     /**
-   * Upload media to Messenger
-   *
-   * @param threadId - Thread ID
-   * @param data - File data as Buffer
-   * @param filename - Filename
-   * @param mimeType - MIME type
-   * @param isVoice - Whether it's a voice message
-   * @returns Upload result with Facebook ID
-   */
+     * Upload media to Messenger
+     *
+     * @param threadId - Thread ID
+     * @param data - File data as Buffer
+     * @param filename - Filename
+     * @param mimeType - MIME type
+     * @param isVoice - Whether it's a voice message
+     * @returns Upload result with Facebook ID
+     */
     async uploadMedia(
         threadId: number,
         data: Buffer,
@@ -335,19 +325,14 @@ export class Client extends (EventEmitter as new () => TypedEventEmitter<ClientE
     }
 
     /**
-   * Send an image
-   *
-   * @param threadId - Thread ID
-   * @param data - Image data as Buffer
-   * @param filename - Filename
-   * @param caption - Optional caption
-   */
-    async sendImage(
-        threadId: number,
-        data: Buffer,
-        filename: string,
-        caption?: string,
-    ): Promise<SendMessageResult> {
+     * Send an image
+     *
+     * @param threadId - Thread ID
+     * @param data - Image data as Buffer
+     * @param filename - Filename
+     * @param caption - Optional caption
+     */
+    async sendImage(threadId: number, data: Buffer, filename: string, caption?: string): Promise<SendMessageResult> {
         if (!this.handle) throw new Error("Not connected");
         return native.sendImage(this.handle, {
             threadId,
@@ -358,19 +343,14 @@ export class Client extends (EventEmitter as new () => TypedEventEmitter<ClientE
     }
 
     /**
-   * Send a video
-   *
-   * @param threadId - Thread ID
-   * @param data - Video data as Buffer
-   * @param filename - Filename
-   * @param caption - Optional caption
-   */
-    async sendVideo(
-        threadId: number,
-        data: Buffer,
-        filename: string,
-        caption?: string,
-    ): Promise<SendMessageResult> {
+     * Send a video
+     *
+     * @param threadId - Thread ID
+     * @param data - Video data as Buffer
+     * @param filename - Filename
+     * @param caption - Optional caption
+     */
+    async sendVideo(threadId: number, data: Buffer, filename: string, caption?: string): Promise<SendMessageResult> {
         if (!this.handle) throw new Error("Not connected");
         return native.sendVideo(this.handle, {
             threadId,
@@ -381,17 +361,13 @@ export class Client extends (EventEmitter as new () => TypedEventEmitter<ClientE
     }
 
     /**
-   * Send a voice message
-   *
-   * @param threadId - Thread ID
-   * @param data - Audio data as Buffer
-   * @param filename - Filename
-   */
-    async sendVoice(
-        threadId: number,
-        data: Buffer,
-        filename: string,
-    ): Promise<SendMessageResult> {
+     * Send a voice message
+     *
+     * @param threadId - Thread ID
+     * @param data - Audio data as Buffer
+     * @param filename - Filename
+     */
+    async sendVoice(threadId: number, data: Buffer, filename: string): Promise<SendMessageResult> {
         if (!this.handle) throw new Error("Not connected");
         return native.sendVoice(this.handle, {
             threadId,
@@ -401,14 +377,14 @@ export class Client extends (EventEmitter as new () => TypedEventEmitter<ClientE
     }
 
     /**
-   * Send a file
-   *
-   * @param threadId - Thread ID
-   * @param data - File data as Buffer
-   * @param filename - Filename
-   * @param mimeType - MIME type
-   * @param caption - Optional caption
-   */
+     * Send a file
+     *
+     * @param threadId - Thread ID
+     * @param data - File data as Buffer
+     * @param filename - Filename
+     * @param mimeType - MIME type
+     * @param caption - Optional caption
+     */
     async sendFile(
         threadId: number,
         data: Buffer,
@@ -427,104 +403,100 @@ export class Client extends (EventEmitter as new () => TypedEventEmitter<ClientE
     }
 
     /**
-   * Send a sticker
-   *
-   * @param threadId - Thread ID
-   * @param stickerId - Sticker ID
-   */
+     * Send a sticker
+     *
+     * @param threadId - Thread ID
+     * @param stickerId - Sticker ID
+     */
     async sendSticker(threadId: number, stickerId: number): Promise<SendMessageResult> {
         if (!this.handle) throw new Error("Not connected");
         return native.sendSticker(this.handle, { threadId, stickerId });
     }
 
     /**
-   * Create a 1:1 thread with a user
-   *
-   * @param userId - User ID to create thread with
-   * @returns Created thread info
-   */
+     * Create a 1:1 thread with a user
+     *
+     * @param userId - User ID to create thread with
+     * @returns Created thread info
+     */
     async createThread(userId: number): Promise<CreateThreadResult> {
         if (!this.handle) throw new Error("Not connected");
         return native.createThread(this.handle, { userId });
     }
 
     /**
-   * Get detailed information about a user
-   *
-   * @param userId - User ID
-   * @returns User info
-   */
+     * Get detailed information about a user
+     *
+     * @param userId - User ID
+     * @returns User info
+     */
     async getUserInfo(userId: number): Promise<UserInfo> {
         if (!this.handle) throw new Error("Not connected");
         return native.getUserInfo(this.handle, { userId });
     }
 
     /**
-   * Set group photo/avatar
-   *
-   * @param threadId - Thread ID
-   * @param data - Image data as Buffer or base64 string
-   * @param mimeType - MIME type (e.g., 'image/jpeg', 'image/png')
-   *
-   * @warn Cannot remove group photo. Messenger web doesn't have a remove option?
-   */
-    async setGroupPhoto(
-        threadId: number,
-        data: Buffer | string,
-        mimeType: string = "image/jpeg",
-    ): Promise<void> {
+     * Set group photo/avatar
+     *
+     * @param threadId - Thread ID
+     * @param data - Image data as Buffer or base64 string
+     * @param mimeType - MIME type (e.g., 'image/jpeg', 'image/png')
+     *
+     * @warn Cannot remove group photo. Messenger web doesn't have a remove option?
+     */
+    async setGroupPhoto(threadId: number, data: Buffer | string, mimeType: string = "image/jpeg"): Promise<void> {
         if (!this.handle) throw new Error("Not connected");
         const base64 = Buffer.isBuffer(data) ? data.toString("base64") : data;
         await native.setGroupPhoto(this.handle, threadId, base64, mimeType);
     }
 
     /**
-   * Rename a group thread
-   *
-   * @param threadId - Thread ID
-   * @param newName - New name
-   */
+     * Rename a group thread
+     *
+     * @param threadId - Thread ID
+     * @param newName - New name
+     */
     async renameThread(threadId: number, newName: string): Promise<void> {
         if (!this.handle) throw new Error("Not connected");
         native.renameThread(this.handle, { threadId, newName });
     }
 
     /**
-   * Mute a thread
-   *
-   * @param threadId - Thread ID
-   * @param muteSeconds - Duration in seconds (-1 for forever, 0 to unmute)
-   */
+     * Mute a thread
+     *
+     * @param threadId - Thread ID
+     * @param muteSeconds - Duration in seconds (-1 for forever, 0 to unmute)
+     */
     async muteThread(threadId: number, muteSeconds: number = -1): Promise<void> {
         if (!this.handle) throw new Error("Not connected");
         native.muteThread(this.handle, { threadId, muteSeconds });
     }
 
     /**
-   * Unmute a thread
-   *
-   * @param threadId - Thread ID
-   */
+     * Unmute a thread
+     *
+     * @param threadId - Thread ID
+     */
     async unmuteThread(threadId: number): Promise<void> {
         return this.muteThread(threadId, 0);
     }
 
     /**
-   * Delete a thread
-   *
-   * @param threadId - Thread ID
-   */
+     * Delete a thread
+     *
+     * @param threadId - Thread ID
+     */
     async deleteThread(threadId: number): Promise<void> {
         if (!this.handle) throw new Error("Not connected");
         native.deleteThread(this.handle, { threadId });
     }
 
     /**
-   * Search for users
-   *
-   * @param query - Search query
-   * @returns List of matching users
-   */
+     * Search for users
+     *
+     * @param query - Search query
+     * @returns List of matching users
+     */
     async searchUsers(query: string): Promise<SearchUserResult[]> {
         if (!this.handle) throw new Error("Not connected");
         const result = await native.searchUsers(this.handle, { query });
@@ -534,83 +506,64 @@ export class Client extends (EventEmitter as new () => TypedEventEmitter<ClientE
     // ========== E2EE Methods ==========
 
     /**
-   * Send an E2EE message
-   *
-   * @param chatJid - Chat JID
-   * @param text - Message text
-   * @param options - Optional: replyToId and replyToSenderJid for replies
-   */
+     * Send an E2EE message
+     *
+     * @param chatJid - Chat JID
+     * @param text - Message text
+     * @param options - Optional: replyToId and replyToSenderJid for replies
+     */
     async sendE2EEMessage(
         chatJid: string,
         text: string,
         options?: { replyToId?: string; replyToSenderJid?: string },
     ): Promise<SendMessageResult> {
         if (!this.handle) throw new Error("Not connected");
-        return native.sendE2EEMessage(
-            this.handle,
-            chatJid,
-            text,
-            options?.replyToId,
-            options?.replyToSenderJid,
-        );
+        return native.sendE2EEMessage(this.handle, chatJid, text, options?.replyToId, options?.replyToSenderJid);
     }
 
     /**
-   * Send / Remove an E2EE reaction
-   *
-   * @param chatJid - Chat JID
-   * @param messageId - Message ID
-   * @param senderJid - Sender JID
-   * @param emoji - Reaction emoji (To remove it, simply omit this parameter)
-   */
-    async sendE2EEReaction(
-        chatJid: string,
-        messageId: string,
-        senderJid: string,
-        emoji?: string,
-    ): Promise<void> {
+     * Send / Remove an E2EE reaction
+     *
+     * @param chatJid - Chat JID
+     * @param messageId - Message ID
+     * @param senderJid - Sender JID
+     * @param emoji - Reaction emoji (To remove it, simply omit this parameter)
+     */
+    async sendE2EEReaction(chatJid: string, messageId: string, senderJid: string, emoji?: string): Promise<void> {
         if (!this.handle) throw new Error("Not connected");
         await native.sendE2EEReaction(this.handle, chatJid, messageId, senderJid, emoji || "");
     }
 
     /**
- * Send E2EE typing indicator
- *
- * @param chatJid - Chat JID
- * @param isTyping - Whether typing
- */
+     * Send E2EE typing indicator
+     *
+     * @param chatJid - Chat JID
+     * @param isTyping - Whether typing
+     */
     async sendE2EETyping(chatJid: string, isTyping: boolean = true): Promise<void> {
         if (!this.handle) throw new Error("Not connected");
         await native.sendE2EETyping(this.handle, chatJid, isTyping);
     }
 
-
     /**
-   * Edit an E2EE message
-   *
-   * @param chatJid - Chat JID
-   * @param messageId - Message ID to edit
-   * @param newText - New message text
-   */
-    async editE2EEMessage(
-        chatJid: string,
-        messageId: string,
-        newText: string,
-    ): Promise<void> {
+     * Edit an E2EE message
+     *
+     * @param chatJid - Chat JID
+     * @param messageId - Message ID to edit
+     * @param newText - New message text
+     */
+    async editE2EEMessage(chatJid: string, messageId: string, newText: string): Promise<void> {
         if (!this.handle) throw new Error("Not connected");
         await native.editE2EEMessage(this.handle, chatJid, messageId, newText);
     }
 
     /**
-   * Unsend/delete an E2EE message
-   *
-   * @param chatJid - Chat JID
-   * @param messageId - Message ID to unsend
-   */
-    async unsendE2EEMessage(
-        chatJid: string,
-        messageId: string,
-    ): Promise<void> {
+     * Unsend/delete an E2EE message
+     *
+     * @param chatJid - Chat JID
+     * @param messageId - Message ID to unsend
+     */
+    async unsendE2EEMessage(chatJid: string, messageId: string): Promise<void> {
         if (!this.handle) throw new Error("Not connected");
         await native.unsendE2EEMessage(this.handle, chatJid, messageId);
     }
@@ -618,13 +571,13 @@ export class Client extends (EventEmitter as new () => TypedEventEmitter<ClientE
     // ========== E2EE Media Methods ==========
 
     /**
-   * Send an E2EE image
-   *
-   * @param chatJid - Chat JID
-   * @param data - Image data as Buffer
-   * @param mimeType - MIME type (e.g., image/jpeg, image/png)
-   * @param options - Optional caption, dimensions, and reply options
-   */
+     * Send an E2EE image
+     *
+     * @param chatJid - Chat JID
+     * @param data - Image data as Buffer
+     * @param mimeType - MIME type (e.g., image/jpeg, image/png)
+     * @param options - Optional caption, dimensions, and reply options
+     */
     async sendE2EEImage(
         chatJid: string,
         data: Buffer,
@@ -645,18 +598,25 @@ export class Client extends (EventEmitter as new () => TypedEventEmitter<ClientE
     }
 
     /**
-   * Send an E2EE video
-   *
-   * @param chatJid - Chat JID
-   * @param data - Video data as Buffer
-   * @param mimeType - MIME type (default: video/mp4)
-   * @param options - Optional caption, dimensions, duration, and reply options
-   */
+     * Send an E2EE video
+     *
+     * @param chatJid - Chat JID
+     * @param data - Video data as Buffer
+     * @param mimeType - MIME type (default: video/mp4)
+     * @param options - Optional caption, dimensions, duration, and reply options
+     */
     async sendE2EEVideo(
         chatJid: string,
         data: Buffer,
         mimeType: string = "video/mp4",
-        options?: { caption?: string; width?: number; height?: number; duration?: number; replyToId?: string; replyToSenderJid?: string },
+        options?: {
+            caption?: string;
+            width?: number;
+            height?: number;
+            duration?: number;
+            replyToId?: string;
+            replyToSenderJid?: string;
+        },
     ): Promise<SendMessageResult> {
         if (!this.handle) throw new Error("Not connected");
         return native.sendE2EEVideo(this.handle, {
@@ -673,13 +633,13 @@ export class Client extends (EventEmitter as new () => TypedEventEmitter<ClientE
     }
 
     /**
-   * Send an E2EE audio/voice message
-   *
-   * @param chatJid - Chat JID
-   * @param data - Audio data as Buffer
-   * @param mimeType - MIME type (default: audio/ogg)
-   * @param options - Optional PTT (push-to-talk/voice message), duration, and reply options
-   */
+     * Send an E2EE audio/voice message
+     *
+     * @param chatJid - Chat JID
+     * @param data - Audio data as Buffer
+     * @param mimeType - MIME type (default: audio/ogg)
+     * @param options - Optional PTT (push-to-talk/voice message), duration, and reply options
+     */
     async sendE2EEAudio(
         chatJid: string,
         data: Buffer,
@@ -699,14 +659,14 @@ export class Client extends (EventEmitter as new () => TypedEventEmitter<ClientE
     }
 
     /**
-   * Send an E2EE document/file
-   *
-   * @param chatJid - Chat JID
-   * @param data - File data as Buffer
-   * @param filename - Filename
-   * @param mimeType - MIME type
-   * @param options - Optional reply options
-   */
+     * Send an E2EE document/file
+     *
+     * @param chatJid - Chat JID
+     * @param data - File data as Buffer
+     * @param filename - Filename
+     * @param mimeType - MIME type
+     * @param options - Optional reply options
+     */
     async sendE2EEDocument(
         chatJid: string,
         data: Buffer,
@@ -726,13 +686,13 @@ export class Client extends (EventEmitter as new () => TypedEventEmitter<ClientE
     }
 
     /**
-   * Send an E2EE sticker
-   *
-   * @param chatJid - Chat JID
-   * @param data - Sticker data as Buffer (WebP format)
-   * @param mimeType - MIME type (default: image/webp)
-   * @param options - Optional reply options
-   */
+     * Send an E2EE sticker
+     *
+     * @param chatJid - Chat JID
+     * @param data - Sticker data as Buffer (WebP format)
+     * @param mimeType - MIME type (default: image/webp)
+     * @param options - Optional reply options
+     */
     async sendE2EESticker(
         chatJid: string,
         data: Buffer,
@@ -750,12 +710,12 @@ export class Client extends (EventEmitter as new () => TypedEventEmitter<ClientE
     }
 
     /**
-   * Get E2EE device data as JSON string
-   *
-   * Use this to persist device data externally (e.g., in a database)
-   *
-   * @returns Device data as JSON string
-   */
+     * Get E2EE device data as JSON string
+     *
+     * Use this to persist device data externally (e.g., in a database)
+     *
+     * @returns Device data as JSON string
+     */
     getDeviceData(): string {
         if (!this.handle) throw new Error("Not connected");
         const result = native.getDeviceData(this.handle);
@@ -773,10 +733,7 @@ export class Client extends (EventEmitter as new () => TypedEventEmitter<ClientE
                     // Yield to event loop before polling to allow other operations
                     await new Promise(resolve => setImmediate(resolve));
 
-                    const event = (await native.pollEvents(
-                        this.handle,
-                        1000,
-                    )) as ClientEvent;
+                    const event = (await native.pollEvents(this.handle, 1000)) as ClientEvent;
                     // eslint-disable-next-line @typescript-eslint/no-explicit-any
                     if (!event || (event as any).type === "timeout") continue;
                     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -785,8 +742,7 @@ export class Client extends (EventEmitter as new () => TypedEventEmitter<ClientE
                         break;
                     }
                     this.handleEvent(event);
-                }
-                catch (err) {
+                } catch (err) {
                     if (this.eventLoopRunning) {
                         this.emit("error", err as Error);
                     }
@@ -847,7 +803,7 @@ export class Client extends (EventEmitter as new () => TypedEventEmitter<ClientE
                 this.emit("deviceDataChanged", event.data);
                 break;
 
-                // queue until fullyReady
+            // queue until fullyReady
             case "message":
             case "messageEdit":
             case "messageUnsend":
@@ -859,8 +815,7 @@ export class Client extends (EventEmitter as new () => TypedEventEmitter<ClientE
             case "e2eeReceipt":
                 if (this._fullyReadyEmitted) {
                     this.emitEvent(event);
-                }
-                else {
+                } else {
                     this.pendingEvents.push(event);
                 }
                 break;
@@ -900,10 +855,10 @@ export class Client extends (EventEmitter as new () => TypedEventEmitter<ClientE
     }
 
     /**
-   * Unload the native library (for cleanup)
-   * @warn Any attempt to find or call a function from this library after unloading it will crash.
-   * @returns void
-   */
+     * Unload the native library (for cleanup)
+     * @warn Any attempt to find or call a function from this library after unloading it will crash.
+     * @returns void
+     */
     public unloadLibrary(): void {
         if (this.handle) {
             native.unload();

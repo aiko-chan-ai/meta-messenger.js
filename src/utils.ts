@@ -20,30 +20,30 @@ import type { Cookies } from "./types.js";
  * Cookie object format (C3C UFC Utility / EditThisCookie style)
  */
 export interface CookieObject {
-    name: string
-    value: string
-    domain?: string
-    path?: string
-    expires?: number | string
-    expirationDate?: number
-    httpOnly?: boolean
-    secure?: boolean
-    sameSite?: string
-    hostOnly?: boolean
-    session?: boolean
+    name: string;
+    value: string;
+    domain?: string;
+    path?: string;
+    expires?: number | string;
+    expirationDate?: number;
+    httpOnly?: boolean;
+    secure?: boolean;
+    sameSite?: string;
+    hostOnly?: boolean;
+    session?: boolean;
 }
 
 /**
  * Netscape cookie file line format
  */
 export interface NetscapeCookie {
-    domain: string
-    flag: boolean
-    path: string
-    secure: boolean
-    expiration: number
-    name: string
-    value: string
+    domain: string;
+    flag: boolean;
+    path: string;
+    secure: boolean;
+    expiration: number;
+    name: string;
+    value: string;
 }
 
 /**
@@ -87,8 +87,7 @@ export class Utils extends null {
                 try {
                     const decoded = Buffer.from(trimmed, "base64").toString("utf-8");
                     return Utils.parseCookies(decoded);
-                }
-                catch {
+                } catch {
                     // Not valid base64, continue with other formats
                 }
             }
@@ -98,14 +97,16 @@ export class Utils extends null {
                 try {
                     const parsed = JSON.parse(trimmed);
                     return Utils.parseCookies(parsed);
-                }
-                catch {
+                } catch {
                     // Not valid JSON, continue with other formats
                 }
             }
 
             // Netscape cookie file format (starts with # or domain)
-            if (trimmed.includes("\t") && (trimmed.startsWith("#") || trimmed.includes(".facebook.com") || trimmed.includes(".messenger.com"))) {
+            if (
+                trimmed.includes("\t") &&
+                (trimmed.startsWith("#") || trimmed.includes(".facebook.com") || trimmed.includes(".messenger.com"))
+            ) {
                 return Utils.fromNetscape(trimmed);
             }
 
@@ -255,7 +256,7 @@ export class Utils extends null {
      */
     static toCookieArray(cookies: Cookies, domain = ".facebook.com"): CookieObject[] {
         return Object.entries(cookies)
-            .filter(([_, value]) => value !== undefined)
+            .filter(([, value]) => value !== undefined)
             .map(([name, value]) => ({
                 name,
                 value: value as string,

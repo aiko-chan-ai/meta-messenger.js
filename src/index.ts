@@ -111,10 +111,7 @@ import type { ClientOptions, Cookies } from "./types.js";
  * })
  * ```
  */
-export async function login(
-    cookies: Cookies,
-    options?: ClientOptions,
-): Promise<Client> {
+export async function login(cookies: Cookies, options?: ClientOptions): Promise<Client> {
     const client = new Client(cookies, options);
     await client.connect();
     return client;
@@ -127,10 +124,7 @@ export async function login(
  * @param options - Client options
  * @returns Client instance (not connected)
  */
-export function createClient(
-    cookies: Cookies,
-    options?: ClientOptions,
-): Client {
+export function createClient(cookies: Cookies, options?: ClientOptions): Client {
     return new Client(cookies, options);
 }
 

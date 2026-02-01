@@ -1,6 +1,9 @@
 /*
+
  * meta-messenger.js, Unofficial Meta Messenger Chat API for NodeJS
+
  * Copyright (c) 2026 Elysia and contributors
+
  */
 
 import { esbuildPluginVersionInjector } from "esbuild-plugin-version-injector";

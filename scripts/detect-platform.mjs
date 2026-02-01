@@ -26,15 +26,23 @@ function detectMusl() {
             const glibc = rep.header && rep.header.glibcVersionRuntime;
             return !glibc;
         }
+<<<<<<< Updated upstream
     }
     catch {
+=======
+    } catch {
+>>>>>>> Stashed changes
         //
     }
     try {
         const out = execSync("ldd --version 2>&1 || true", { encoding: "utf8" });
         return /musl/i.test(out);
+<<<<<<< Updated upstream
     }
     catch {
+=======
+    } catch {
+>>>>>>> Stashed changes
         //
     }
     return false;

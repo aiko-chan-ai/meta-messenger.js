@@ -6,13 +6,15 @@
   "types": "dist/index.d.ts",
   "type": "module",
   "scripts": {
+    "test": "tsc --noEmit && npm run lint",
     "build:go": "node scripts/build-go.mjs",
     "build:ts": "tsup",
     "build": "npm run build:go && npm run build:ts",
     "postinstall": "node scripts/postinstall.mjs",
     "lint:fix": "eslint . --fix",
     "lint": "eslint .",
-    "test": "tsc --noEmit && npm run lint"
+    "format:fix": "prettier --write --list-different .",
+    "format": "prettier --check ."
   },
   "publishConfig": {
     "access": "public"
@@ -45,6 +47,7 @@
     "eslint-plugin-simple-header": "^1.0.2",
     "eslint-plugin-simple-import-sort": "^12.1.1",
     "eslint-plugin-unused-imports": "^4.0.0",
+    "prettier": "^3.8.1",
     "tsup": "^8.5.1",
     "tsx": "^4.21.0",
     "typescript": "^5.9.3"
