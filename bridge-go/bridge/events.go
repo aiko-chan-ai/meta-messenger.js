@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"go.mau.fi/whatsmeow/proto/waArmadilloApplication"
+	"go.mau.fi/whatsmeow/proto/waArmadilloXMA"
 	"go.mau.fi/whatsmeow/proto/waCommon"
 	"go.mau.fi/whatsmeow/proto/waConsumerApplication"
 	"go.mau.fi/whatsmeow/types/events"
@@ -628,14 +629,67 @@ func extractE2EEText(e *events.FBMessage) string {
 					return mt.MessageText.GetText()
 				}
 				if et, ok := c.GetContent().(*waConsumerApplication.ConsumerApplication_Content_ExtendedTextMessage); ok {
-					return et.ExtendedTextMessage.GetText().GetText()
+					extMsg := et.ExtendedTextMessage
+					if extMsg == nil {
+						return ""
+					}
+					// Try GetText().GetText() first
+					if textMsg := extMsg.GetText(); textMsg != nil {
+						if text := textMsg.GetText(); text != "" {
+							return text
+						}
+					}
+					// Fallback to matchedText (the actual URL in the message)
+					if matched := extMsg.GetMatchedText(); matched != "" {
+						return matched
+					}
+					// Fallback to canonicalURL
+					if canonical := extMsg.GetCanonicalURL(); canonical != "" {
+						return canonical
+					}
 				}
 			}
 		}
 	}
 
-	if _, ok := e.Message.(*waArmadilloApplication.Armadillo); ok {
-		// Armadillo special messages - could be parsed further
+	if armadillo, ok := e.Message.(*waArmadilloApplication.Armadillo); ok {
+		// Armadillo special messages
+		if payload := armadillo.GetPayload(); payload != nil {
+			if content := payload.GetContent(); content != nil {
+				// ExtendedContentMessage - used for link shares
+				if extMsg := content.GetExtendedContentMessage(); extMsg != nil {
+					// Try MessageText first (the actual text the user typed)
+					if text := extMsg.GetMessageText(); text != "" {
+						return text
+					}
+					// Fallback to TitleText (link title)
+					if title := extMsg.GetTitleText(); title != "" {
+						return title
+					}
+					// Fallback to ActionURL from CTAs
+					if ctas := extMsg.GetCtas(); len(ctas) > 0 {
+						for _, cta := range ctas {
+							if actionURL := cta.GetActionURL(); actionURL != "" {
+								// Try to extract actual URL from /l.php redirect
+								if parsedURL := extractURLFromLPHP(actionURL); parsedURL != "" {
+									return parsedURL
+								}
+								return actionURL
+							}
+							if nativeURL := cta.GetNativeURL(); nativeURL != "" {
+								return nativeURL
+							}
+						}
+					}
+				}
+				// ExtendedContentMessageWithSear - extended content with search
+				if searMsg := content.GetExtendedMessageContentWithSear(); searMsg != nil {
+					if nativeURL := searMsg.GetNativeURL(); nativeURL != "" {
+						return nativeURL
+					}
+				}
+			}
+		}
 	}
 
 	return ""
@@ -893,6 +947,7 @@ func (c *Client) extractE2EEMessage(e *events.FBMessage, senderID int64) *E2EEMe
 	if ca, ok := e.Message.(*waConsumerApplication.ConsumerApplication); ok {
 		if p := ca.GetPayload(); p != nil {
 			if content := p.GetContent(); content != nil {
+
 				// Check for image
 				if img, ok := content.GetContent().(*waConsumerApplication.ConsumerApplication_Content_ImageMessage); ok {
 					att := c.extractE2EEImageAttachment(img.ImageMessage)
@@ -958,23 +1013,39 @@ func (c *Client) extractE2EEMessage(e *events.FBMessage, senderID int64) *E2EEMe
 				// Check for extended text (with URL preview)
 				if ext, ok := content.GetContent().(*waConsumerApplication.ConsumerApplication_Content_ExtendedTextMessage); ok {
 					if extMsg := ext.ExtendedTextMessage; extMsg != nil {
+						var textContent, matchedText, canonicalURL string
 						if textMsg := extMsg.GetText(); textMsg != nil {
-							msg.Text = textMsg.GetText()
+							textContent = textMsg.GetText()
+							if textContent != "" {
+								msg.Text = textContent
+							}
 							// Extract mentions from extended text
 							if mentions := extractE2EEMentions(textMsg); mentions != nil {
 								msg.Mentions = mentions
 							}
 						}
-						if extMsg.GetCanonicalURL() != "" || extMsg.GetMatchedText() != "" {
+						matchedText = extMsg.GetMatchedText()
+						canonicalURL = extMsg.GetCanonicalURL()
+
+						// If text is still empty, use matched text (URL)
+						if msg.Text == "" && matchedText != "" {
+							msg.Text = matchedText
+						}
+						// If still empty, use canonical URL
+						if msg.Text == "" && canonicalURL != "" {
+							msg.Text = canonicalURL
+						}
+						// Create link attachment if we have a URL
+						linkURL := canonicalURL
+						if linkURL == "" {
+							linkURL = matchedText
+						}
+						if linkURL != "" {
 							att := &Attachment{
 								Type:        "link",
-								URL:         extMsg.GetCanonicalURL(),
+								URL:         linkURL,
 								FileName:    extMsg.GetTitle(),
 								Description: extMsg.GetDescription(),
-							}
-							// If no canonical URL, use matched text as the URL
-							if att.URL == "" && extMsg.GetMatchedText() != "" {
-								att.URL = extMsg.GetMatchedText()
 							}
 							// Try to decode thumbnail for preview
 							if thumb, err := extMsg.DecodeThumbnail(); err == nil && thumb != nil {
@@ -991,7 +1062,88 @@ func (c *Client) extractE2EEMessage(e *events.FBMessage, senderID int64) *E2EEMe
 		}
 	}
 
+	// Extract from Armadillo (special messages like links, payments, etc.)
+	if armadillo, ok := e.Message.(*waArmadilloApplication.Armadillo); ok {
+		payload := armadillo.GetPayload()
+		if payload == nil {
+			return msg
+		}
+
+		// Try Content first (link shares, etc.)
+		if content := payload.GetContent(); content != nil {
+			// ExtendedContentMessage - used for link shares
+			if extMsg := content.GetExtendedContentMessage(); extMsg != nil {
+				att := c.extractArmadilloLinkAttachment(extMsg)
+				if att != nil {
+					msg.Attachments = append(msg.Attachments, att)
+				}
+			}
+
+			// ExtendedContentMessageWithSear
+			if searMsg := content.GetExtendedMessageContentWithSear(); searMsg != nil {
+				if nativeURL := searMsg.GetNativeURL(); nativeURL != "" {
+					att := &Attachment{
+						Type: "link",
+						URL:  nativeURL,
+					}
+					msg.Attachments = append(msg.Attachments, att)
+				}
+			}
+		}
+	}
+
 	return msg
+}
+
+// extractArmadilloLinkAttachment extracts link attachment from Armadillo ExtendedContentMessage
+func (c *Client) extractArmadilloLinkAttachment(extMsg *waArmadilloXMA.ExtendedContentMessage) *Attachment {
+	if extMsg == nil {
+		return nil
+	}
+
+	// Try to get URL from CTAs
+	var linkURL string
+	if ctas := extMsg.GetCtas(); len(ctas) > 0 {
+		for _, cta := range ctas {
+			if actionURL := cta.GetActionURL(); actionURL != "" {
+				// Try to extract actual URL from /l.php redirect
+				if parsedURL := extractURLFromLPHP(actionURL); parsedURL != "" {
+					linkURL = parsedURL
+				} else {
+					linkURL = actionURL
+				}
+				break
+			}
+			if nativeURL := cta.GetNativeURL(); nativeURL != "" {
+				linkURL = nativeURL
+				break
+			}
+		}
+	}
+
+	// If no URL found, skip creating attachment
+	if linkURL == "" {
+		return nil
+	}
+
+	att := &Attachment{
+		Type:        "link",
+		URL:         linkURL,
+		FileName:    extMsg.GetTitleText(),    // Use as fileName (title)
+		Description: extMsg.GetSubtitleText(), // Use as description
+	}
+
+	// Additional metadata
+	if header := extMsg.GetHeaderTitle(); header != "" && att.FileName == "" {
+		att.FileName = header
+	}
+
+	// Set source text from overlay
+	if overlay := extMsg.GetOverlayTitle(); overlay != "" {
+		att.SourceText = overlay
+	}
+
+	return att
 }
 
 // extractE2EEImageAttachment extracts image attachment with full metadata
