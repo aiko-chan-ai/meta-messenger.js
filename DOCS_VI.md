@@ -46,6 +46,7 @@
   * [`client.sendE2EEAudio()`](#sendE2EEAudio)
   * [`client.sendE2EEDocument()`](#sendE2EEDocument)
   * [`client.sendE2EESticker()`](#sendE2EESticker)
+  * [`client.downloadE2EEMedia()`](#downloadE2EEMedia)
   * [`client.getDeviceData()`](#getDeviceData)
 * [Khác](#khác)
   * [`client.unloadLibrary()`](#unloadLibrary)
@@ -997,6 +998,69 @@ await client.sendE2EESticker(chatJid, sticker, 'image/webp')
 
 ---
 
+<a name="downloadE2EEMedia"></a>
+## client.downloadE2EEMedia(options)
+
+Tải xuống và giải mã media E2EE từ attachment.
+
+__Tham số__
+
+* `options`: object
+  * `directPath`: string - Đường dẫn trực tiếp từ attachment
+  * `mediaKey`: string - Media key mã hóa Base64
+  * `mediaSha256`: string - SHA256 của file gốc mã hóa Base64
+  * `mediaEncSha256?`: string - SHA256 của file đã mã hóa, mã hóa Base64 (khuyến nghị để xác minh)
+  * `mediaType`: string - Loại media: `'image'`, `'video'`, `'audio'`, `'document'`, `'sticker'`
+  * `mimeType`: string - MIME type (ví dụ: 'image/jpeg')
+  * `fileSize`: number - Kích thước file (bytes)
+
+__Trả về__
+
+Promise<{ data: Buffer; mimeType: string; fileSize: number }>
+* `data`: Buffer - Dữ liệu media đã giải mã
+* `mimeType`: string - MIME type
+* `fileSize`: number - Kích thước file
+
+__Ví dụ__
+
+```typescript
+import { writeFileSync } from 'fs'
+
+client.on('e2eeMessage', async (message) => {
+    if (message.attachments && message.attachments.length > 0) {
+        const attachment = message.attachments[0]
+        
+        // Kiểm tra attachment có metadata E2EE cần thiết không
+        if (attachment.mediaKey && attachment.mediaSha256 && attachment.directPath) {
+            try {
+                const result = await client.downloadE2EEMedia({
+                    directPath: attachment.directPath,
+                    mediaKey: attachment.mediaKey,
+                    mediaSha256: attachment.mediaSha256,
+                    mediaEncSha256: attachment.mediaEncSha256, // Tùy chọn nhưng khuyến nghị
+                    mediaType: attachment.type,
+                    mimeType: attachment.mimeType || 'application/octet-stream',
+                    fileSize: attachment.fileSize || 0,
+                })
+                
+                // Lưu vào file
+                const extension = result.mimeType.split('/')[1] || 'bin'
+                writeFileSync(`downloaded.${extension}`, result.data)
+                console.log(`Đã tải ${result.fileSize} bytes`)
+            } catch (error) {
+                console.error('Không thể tải media E2EE:', error)
+            }
+        }
+    }
+})
+```
+
+__Lưu ý__
+
+Method này chỉ hoạt động với tin nhắn E2EE (mã hóa đầu cuối). Với tin nhắn thường, hãy sử dụng trường `url` trong attachment thay thế.
+
+---
+
 <a name="getDeviceData"></a>
 ## client.getDeviceData()
 
@@ -1543,6 +1607,11 @@ interface Attachment {
     duration?: number
     stickerId?: number
     previewUrl?: string
+    // Dành cho tải media E2EE (chỉ có trong tin nhắn E2EE)
+    mediaKey?: string      // Khóa mã hóa dạng Base64
+    mediaSha256?: string   // SHA256 file gốc dạng Base64
+    mediaEncSha256?: string // SHA256 file đã mã hóa dạng Base64
+    directPath?: string    // Đường dẫn trực tiếp để tải
 }
 ```
 

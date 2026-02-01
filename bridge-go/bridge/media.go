@@ -2,6 +2,7 @@ package bridge
 
 import (
 	"context"
+	"encoding/base64"
 	"fmt"
 	"io"
 	"net/http"
@@ -1059,6 +1060,91 @@ func (c *Client) SendE2EESticker(opts *SendE2EEStickerOptions) (*SendMessageResu
 		MessageID:   msgID,
 		TimestampMs: resp.Timestamp.UnixMilli(),
 	}, nil
+}
+
+// DownloadE2EEMediaOptions for downloading E2EE media
+type DownloadE2EEMediaOptions struct {
+	DirectPath     string `json:"directPath"`
+	MediaKey       string `json:"mediaKey"`       // base64 encoded
+	MediaSHA256    string `json:"mediaSha256"`    // base64 encoded
+	MediaEncSHA256 string `json:"mediaEncSha256"` // base64 encoded - encrypted file SHA256
+	MediaType      string `json:"mediaType"`      // "image", "video", "audio", "document", "sticker"
+	MimeType       string `json:"mimeType"`
+	FileSize       int64  `json:"fileSize"`
+}
+
+// DownloadE2EEMediaResult result of downloading E2EE media
+type DownloadE2EEMediaResult struct {
+	Data     []byte `json:"data"`
+	MimeType string `json:"mimeType"`
+	FileSize int64  `json:"fileSize"`
+}
+
+// DownloadE2EEMedia downloads and decrypts E2EE media
+func (c *Client) DownloadE2EEMedia(opts *DownloadE2EEMediaOptions) (*DownloadE2EEMediaResult, error) {
+	if c.E2EE == nil || !c.E2EE.IsConnected() {
+		return nil, ErrE2EENotConnected
+	}
+
+	// Decode base64 keys
+	mediaKey, err := decodeBase64(opts.MediaKey)
+	if err != nil {
+		return nil, fmt.Errorf("failed to decode mediaKey: %w", err)
+	}
+	mediaSHA256, err := decodeBase64(opts.MediaSHA256)
+	if err != nil {
+		return nil, fmt.Errorf("failed to decode mediaSha256: %w", err)
+	}
+	var mediaEncSHA256 []byte
+	if opts.MediaEncSHA256 != "" {
+		mediaEncSHA256, err = decodeBase64(opts.MediaEncSHA256)
+		if err != nil {
+			return nil, fmt.Errorf("failed to decode mediaEncSha256: %w", err)
+		}
+	}
+
+	// Map media type string to whatsmeow.MediaType
+	var waMediaType whatsmeow.MediaType
+	switch opts.MediaType {
+	case "image":
+		waMediaType = whatsmeow.MediaImage
+	case "video":
+		waMediaType = whatsmeow.MediaVideo
+	case "audio", "voice":
+		waMediaType = whatsmeow.MediaAudio
+	case "document", "file":
+		waMediaType = whatsmeow.MediaDocument
+	case "sticker":
+		waMediaType = whatsmeow.MediaImage // Stickers use image type
+	default:
+		waMediaType = whatsmeow.MediaDocument
+	}
+
+	// Create WAMediaTransport Integral for download
+	directPath := opts.DirectPath
+	integral := &waMediaTransport.WAMediaTransport_Integral{
+		MediaKey:      mediaKey,
+		FileSHA256:    mediaSHA256,
+		FileEncSHA256: mediaEncSHA256,
+		DirectPath:    &directPath,
+	}
+
+	// Download and decrypt
+	data, err := c.E2EE.DownloadFB(c.ctx, integral, waMediaType)
+	if err != nil {
+		return nil, fmt.Errorf("failed to download E2EE media: %w", err)
+	}
+
+	return &DownloadE2EEMediaResult{
+		Data:     data,
+		MimeType: opts.MimeType,
+		FileSize: int64(len(data)),
+	}, nil
+}
+
+// decodeBase64 decodes a base64 string
+func decodeBase64(s string) ([]byte, error) {
+	return base64.StdEncoding.DecodeString(s)
 }
 
 // Unused imports fix

@@ -980,4 +980,34 @@ func MxSendE2EESticker(input *C.char) *C.char {
 	return success(result)
 }
 
+//export MxDownloadE2EEMedia
+func MxDownloadE2EEMedia(input *C.char) *C.char {
+	var payload struct {
+		Handle  uint64                          `json:"handle"`
+		Options bridge.DownloadE2EEMediaOptions `json:"options"`
+	}
+	if err := json.Unmarshal([]byte(C.GoString(input)), &payload); err != nil {
+		return fail(fmt.Errorf("invalid json: %w", err))
+	}
+
+	clientsMu.RLock()
+	client := clients[handle(payload.Handle)]
+	clientsMu.RUnlock()
+	if client == nil {
+		return fail(fmt.Errorf("client not found"))
+	}
+
+	result, err := client.DownloadE2EEMedia(&payload.Options)
+	if err != nil {
+		return fail(err)
+	}
+
+	// Encode data as base64 for JSON transport
+	return success(map[string]interface{}{
+		"data":     base64.StdEncoding.EncodeToString(result.Data),
+		"mimeType": result.MimeType,
+		"fileSize": result.FileSize,
+	})
+}
+
 func main() {}

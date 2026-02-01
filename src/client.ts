@@ -722,6 +722,48 @@ export class Client extends (EventEmitter as new () => TypedEventEmitter<ClientE
         return result.deviceData;
     }
 
+    /**
+     * Download and decrypt E2EE media
+     *
+     * Use the mediaKey, mediaSha256, and directPath from attachment metadata
+     * to download and decrypt encrypted media.
+     *
+     * @param options - Download options from attachment metadata
+     * @returns Decrypted media data as Buffer
+     *
+     * @example
+     * ```typescript
+     * const attachment = message.attachments[0];
+     * const result = await client.downloadE2EEMedia({
+     *     directPath: attachment.directPath!,
+     *     mediaKey: attachment.mediaKey!,
+     *     mediaSha256: attachment.mediaSha256!,
+     *     mediaEncSha256: attachment.mediaEncSha256,
+     *     mediaType: attachment.type,
+     *     mimeType: attachment.mimeType!,
+     *     fileSize: attachment.fileSize!,
+     * });
+     * fs.writeFileSync('downloaded.jpg', result.data);
+     * ```
+     */
+    async downloadE2EEMedia(options: {
+        directPath: string;
+        mediaKey: string;
+        mediaSha256: string;
+        mediaEncSha256?: string;
+        mediaType: string;
+        mimeType: string;
+        fileSize: number;
+    }): Promise<{ data: Buffer; mimeType: string; fileSize: number }> {
+        if (!this.handle) throw new Error("Not connected");
+        const result = await native.downloadE2EEMedia(this.handle, options);
+        return {
+            data: Buffer.from(result.data, "base64"),
+            mimeType: result.mimeType,
+            fileSize: result.fileSize,
+        };
+    }
+
     private startEventLoop(): void {
         if (this.eventLoopRunning) return;
         this.eventLoopRunning = true;

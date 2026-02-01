@@ -68,6 +68,7 @@ const fns = {
     MxSendE2EEAudio: mk("str", "MxSendE2EEAudio", ["str"]),
     MxSendE2EEDocument: mk("str", "MxSendE2EEDocument", ["str"]),
     MxSendE2EESticker: mk("str", "MxSendE2EESticker", ["str"]),
+    MxDownloadE2EEMedia: mk("str", "MxDownloadE2EEMedia", ["str"]),
 } as const;
 
 interface JsonResp<T = unknown> {
@@ -311,6 +312,18 @@ export const native = {
             replyToSenderJid?: string;
         },
     ) => callAsync<{ messageId: string; timestampMs: number }>("MxSendE2EESticker", { handle, options }),
+
+    downloadE2EEMedia: (
+        handle: number,
+        options: {
+            directPath: string;
+            mediaKey: string;
+            mediaSha256: string;
+            mediaType: string;
+            mimeType: string;
+            fileSize: number;
+        },
+    ) => callAsync<{ data: string; mimeType: string; fileSize: number }>("MxDownloadE2EEMedia", { handle, options }),
 
     unload: () => lib.unload(),
 };

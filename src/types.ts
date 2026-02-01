@@ -253,21 +253,42 @@ export type AttachmentType = "image" | "video" | "audio" | "file" | "sticker" | 
  * Media attachment
  */
 export interface Attachment {
+    /** Attachment type */
     type: AttachmentType;
+    /** URL to download media (for regular messages) */
     url?: string;
+    /** Original filename */
     fileName?: string;
+    /** MIME type (e.g., 'image/jpeg') */
     mimeType?: string;
+    /** File size in bytes */
     fileSize?: number;
+    /** Image/video width in pixels */
     width?: number;
+    /** Image/video height in pixels */
     height?: number;
-    duration?: number; // in seconds for audio/video
+    /** Duration in seconds (for audio/video) */
+    duration?: number;
+    /** Sticker ID (for stickers) */
     stickerId?: number;
+    /** Location latitude */
     latitude?: number;
+    /** Location longitude */
     longitude?: number;
+    /** Preview/thumbnail URL */
     previewUrl?: string;
-    // For E2EE media download
-    mediaKey?: string; // base64 encoded
-    mediaSha256?: string; // base64 encoded
+    
+    // === E2EE Media Download Fields ===
+    // These fields are only available for E2EE (end-to-end encrypted) messages.
+    // Use client.downloadE2EEMedia() to download and decrypt the media.
+    
+    /** Base64 encoded media encryption key (E2EE only) */
+    mediaKey?: string;
+    /** Base64 encoded SHA256 hash of the decrypted file (E2EE only) */
+    mediaSha256?: string;
+    /** Base64 encoded SHA256 hash of the encrypted file (E2EE only) */
+    mediaEncSha256?: string;
+    /** Direct path for E2EE media download (E2EE only) */
     directPath?: string;
 }
 

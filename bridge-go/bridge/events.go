@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"go.mau.fi/whatsmeow/proto/waArmadilloApplication"
+	"go.mau.fi/whatsmeow/proto/waCommon"
 	"go.mau.fi/whatsmeow/proto/waConsumerApplication"
 	"go.mau.fi/whatsmeow/types/events"
 
@@ -81,9 +82,10 @@ type Attachment struct {
 	Longitude  float64 `json:"longitude,omitempty"`
 	PreviewURL string  `json:"previewUrl,omitempty"`
 	// For E2EE media download
-	MediaKey    []byte `json:"mediaKey,omitempty"`
-	MediaSHA256 []byte `json:"mediaSha256,omitempty"`
-	DirectPath  string `json:"directPath,omitempty"`
+	MediaKey       []byte `json:"mediaKey,omitempty"`
+	MediaSHA256    []byte `json:"mediaSha256,omitempty"`
+	MediaEncSHA256 []byte `json:"mediaEncSha256,omitempty"`
+	DirectPath     string `json:"directPath,omitempty"`
 }
 
 // ReplyTo represents reply info
@@ -773,6 +775,75 @@ func extractE2EERevokedMessageID(e *events.FBMessage) string {
 	return ""
 }
 
+// extractE2EEMentions extracts mentions from a MessageText
+func extractE2EEMentions(text *waCommon.MessageText) []*Mention {
+	if text == nil {
+		return nil
+	}
+	jids := text.GetMentionedJID()
+	if len(jids) == 0 {
+		return nil
+	}
+
+	mentions := make([]*Mention, 0, len(jids))
+	textContent := text.GetText()
+
+	for _, jid := range jids {
+		// Extract user ID from JID (format: "123456789@msgr" or "123456789@s.whatsapp.net")
+		var userID int64
+		atIdx := strings.Index(jid, "@")
+		if atIdx > 0 {
+			userID, _ = strconv.ParseInt(jid[:atIdx], 10, 64)
+		}
+		if userID == 0 {
+			continue
+		}
+
+		// Try to find mention position in text (format: @123456789)
+		mentionText := "@" + jid
+		offset := strings.Index(textContent, mentionText)
+		length := len(mentionText)
+
+		mentions = append(mentions, &Mention{
+			UserID: userID,
+			Offset: offset,
+			Length: length,
+			Type:   "user",
+		})
+	}
+	return mentions
+}
+
+// extractE2EEReplyTo extracts reply info from FBMessage metadata
+func extractE2EEReplyTo(e *events.FBMessage) *ReplyTo {
+	if e.FBApplication == nil {
+		return nil
+	}
+	metadata := e.FBApplication.GetMetadata()
+	if metadata == nil {
+		return nil
+	}
+	qm := metadata.GetQuotedMessage()
+	if qm == nil {
+		return nil
+	}
+
+	replyTo := &ReplyTo{
+		MessageID: qm.GetStanzaID(),
+	}
+
+	// Extract sender ID from participant JID
+	participant := qm.GetParticipant()
+	if participant != "" {
+		atIdx := strings.Index(participant, "@")
+		if atIdx > 0 {
+			replyTo.SenderID, _ = strconv.ParseInt(participant[:atIdx], 10, 64)
+		}
+	}
+
+	return replyTo
+}
+
 // extractE2EEMessage extracts full message content including media
 func (c *Client) extractE2EEMessage(e *events.FBMessage, senderID int64) *E2EEMessage {
 	// Parse threadID from chatJID (format: "123456789@msgr" -> 123456789)
@@ -793,6 +864,11 @@ func (c *Client) extractE2EEMessage(e *events.FBMessage, senderID int64) *E2EEMe
 		Mentions:    []*Mention{},
 	}
 
+	// Extract reply info from FBApplication metadata
+	if replyTo := extractE2EEReplyTo(e); replyTo != nil {
+		msg.ReplyTo = replyTo
+	}
+
 	if e.Message == nil {
 		return msg
 	}
@@ -803,50 +879,45 @@ func (c *Client) extractE2EEMessage(e *events.FBMessage, senderID int64) *E2EEMe
 			if content := p.GetContent(); content != nil {
 				// Check for image
 				if img, ok := content.GetContent().(*waConsumerApplication.ConsumerApplication_Content_ImageMessage); ok {
-					att := &Attachment{
-						Type: "image",
-					}
+					att := c.extractE2EEImageAttachment(img.ImageMessage)
 					msg.Attachments = append(msg.Attachments, att)
-					// Caption
+					// Caption with mentions
 					if caption := img.ImageMessage.GetCaption(); caption != nil {
 						msg.Text = caption.GetText()
+						if mentions := extractE2EEMentions(caption); mentions != nil {
+							msg.Mentions = mentions
+						}
 					}
 				}
 
 				// Check for video
 				if vid, ok := content.GetContent().(*waConsumerApplication.ConsumerApplication_Content_VideoMessage); ok {
-					att := &Attachment{
-						Type: "video",
-					}
+					att := c.extractE2EEVideoAttachment(vid.VideoMessage)
 					msg.Attachments = append(msg.Attachments, att)
-					// Caption
+					// Caption with mentions
 					if caption := vid.VideoMessage.GetCaption(); caption != nil {
 						msg.Text = caption.GetText()
+						if mentions := extractE2EEMentions(caption); mentions != nil {
+							msg.Mentions = mentions
+						}
 					}
 				}
 
 				// Check for audio/voice
-				if _, ok := content.GetContent().(*waConsumerApplication.ConsumerApplication_Content_AudioMessage); ok {
-					att := &Attachment{
-						Type: "voice",
-					}
+				if audio, ok := content.GetContent().(*waConsumerApplication.ConsumerApplication_Content_AudioMessage); ok {
+					att := c.extractE2EEAudioAttachment(audio.AudioMessage)
 					msg.Attachments = append(msg.Attachments, att)
 				}
 
 				// Check for document/file
 				if doc, ok := content.GetContent().(*waConsumerApplication.ConsumerApplication_Content_DocumentMessage); ok {
-					att := &Attachment{
-						Type:     "file",
-						FileName: doc.DocumentMessage.GetFileName(),
-					}
+					att := c.extractE2EEDocumentAttachment(doc.DocumentMessage)
 					msg.Attachments = append(msg.Attachments, att)
 				}
 
 				// Check for sticker
-				if _, ok := content.GetContent().(*waConsumerApplication.ConsumerApplication_Content_StickerMessage); ok {
-					att := &Attachment{
-						Type: "sticker",
-					}
+				if sticker, ok := content.GetContent().(*waConsumerApplication.ConsumerApplication_Content_StickerMessage); ok {
+					att := c.extractE2EEStickerAttachment(sticker.StickerMessage)
 					msg.Attachments = append(msg.Attachments, att)
 				}
 
@@ -861,11 +932,22 @@ func (c *Client) extractE2EEMessage(e *events.FBMessage, senderID int64) *E2EEMe
 					msg.Attachments = append(msg.Attachments, att)
 				}
 
+				// Check for text message with mentions
+				if text, ok := content.GetContent().(*waConsumerApplication.ConsumerApplication_Content_MessageText); ok {
+					if mentions := extractE2EEMentions(text.MessageText); mentions != nil {
+						msg.Mentions = mentions
+					}
+				}
+
 				// Check for extended text (with URL preview)
 				if ext, ok := content.GetContent().(*waConsumerApplication.ConsumerApplication_Content_ExtendedTextMessage); ok {
 					if extMsg := ext.ExtendedTextMessage; extMsg != nil {
 						if textMsg := extMsg.GetText(); textMsg != nil {
 							msg.Text = textMsg.GetText()
+							// Extract mentions from extended text
+							if mentions := extractE2EEMentions(textMsg); mentions != nil {
+								msg.Mentions = mentions
+							}
 						}
 						if extMsg.GetCanonicalURL() != "" {
 							att := &Attachment{
@@ -882,4 +964,176 @@ func (c *Client) extractE2EEMessage(e *events.FBMessage, senderID int64) *E2EEMe
 	}
 
 	return msg
+}
+
+// extractE2EEImageAttachment extracts image attachment with full metadata
+func (c *Client) extractE2EEImageAttachment(img *waConsumerApplication.ConsumerApplication_ImageMessage) *Attachment {
+	att := &Attachment{
+		Type: "image",
+	}
+
+	// Try to decode transport for metadata
+	transport, err := img.Decode()
+	if err == nil && transport != nil {
+		if ancillary := transport.GetAncillary(); ancillary != nil {
+			att.Width = int(ancillary.GetWidth())
+			att.Height = int(ancillary.GetHeight())
+		}
+		if integral := transport.GetIntegral(); integral != nil {
+			if waTransport := integral.GetTransport(); waTransport != nil {
+				if ancillary := waTransport.GetAncillary(); ancillary != nil {
+					att.MimeType = ancillary.GetMimetype()
+					att.FileSize = int64(ancillary.GetFileLength())
+				}
+				if integral := waTransport.GetIntegral(); integral != nil {
+					att.MediaKey = integral.GetMediaKey()
+					att.MediaSHA256 = integral.GetFileSHA256()
+					att.MediaEncSHA256 = integral.GetFileEncSHA256()
+					if integral.DirectPath != nil {
+						att.DirectPath = *integral.DirectPath
+					}
+				}
+			}
+		}
+	}
+
+	return att
+}
+
+// extractE2EEVideoAttachment extracts video attachment with full metadata
+func (c *Client) extractE2EEVideoAttachment(vid *waConsumerApplication.ConsumerApplication_VideoMessage) *Attachment {
+	att := &Attachment{
+		Type: "video",
+	}
+
+	// Try to decode transport for metadata
+	transport, err := vid.Decode()
+	if err == nil && transport != nil {
+		if ancillary := transport.GetAncillary(); ancillary != nil {
+			att.Width = int(ancillary.GetWidth())
+			att.Height = int(ancillary.GetHeight())
+			att.Duration = int(ancillary.GetSeconds())
+		}
+		if integral := transport.GetIntegral(); integral != nil {
+			if waTransport := integral.GetTransport(); waTransport != nil {
+				if ancillary := waTransport.GetAncillary(); ancillary != nil {
+					att.MimeType = ancillary.GetMimetype()
+					att.FileSize = int64(ancillary.GetFileLength())
+				}
+				if integral := waTransport.GetIntegral(); integral != nil {
+					att.MediaKey = integral.GetMediaKey()
+					att.MediaSHA256 = integral.GetFileSHA256()
+					att.MediaEncSHA256 = integral.GetFileEncSHA256()
+					if integral.DirectPath != nil {
+						att.DirectPath = *integral.DirectPath
+					}
+				}
+			}
+		}
+	}
+
+	return att
+}
+
+// extractE2EEAudioAttachment extracts audio attachment with full metadata
+func (c *Client) extractE2EEAudioAttachment(audio *waConsumerApplication.ConsumerApplication_AudioMessage) *Attachment {
+	att := &Attachment{
+		Type: "voice",
+	}
+
+	// Check PTT flag - if true, it's a voice message, otherwise it's an audio file
+	if !audio.GetPTT() {
+		att.Type = "audio"
+	}
+
+	// Try to decode transport for metadata
+	transport, err := audio.Decode()
+	if err == nil && transport != nil {
+		if ancillary := transport.GetAncillary(); ancillary != nil {
+			att.Duration = int(ancillary.GetSeconds())
+		}
+		if integral := transport.GetIntegral(); integral != nil {
+			if waTransport := integral.GetTransport(); waTransport != nil {
+				if ancillary := waTransport.GetAncillary(); ancillary != nil {
+					att.MimeType = ancillary.GetMimetype()
+					att.FileSize = int64(ancillary.GetFileLength())
+				}
+				if integral := waTransport.GetIntegral(); integral != nil {
+					att.MediaKey = integral.GetMediaKey()
+					att.MediaSHA256 = integral.GetFileSHA256()
+					att.MediaEncSHA256 = integral.GetFileEncSHA256()
+					if integral.DirectPath != nil {
+						att.DirectPath = *integral.DirectPath
+					}
+				}
+			}
+		}
+	}
+
+	return att
+}
+
+// extractE2EEDocumentAttachment extracts document attachment with full metadata
+func (c *Client) extractE2EEDocumentAttachment(doc *waConsumerApplication.ConsumerApplication_DocumentMessage) *Attachment {
+	att := &Attachment{
+		Type:     "file",
+		FileName: doc.GetFileName(),
+	}
+
+	// Try to decode transport for metadata
+	transport, err := doc.Decode()
+	if err == nil && transport != nil {
+		if integral := transport.GetIntegral(); integral != nil {
+			if waTransport := integral.GetTransport(); waTransport != nil {
+				if ancillary := waTransport.GetAncillary(); ancillary != nil {
+					att.MimeType = ancillary.GetMimetype()
+					att.FileSize = int64(ancillary.GetFileLength())
+				}
+				if integral := waTransport.GetIntegral(); integral != nil {
+					att.MediaKey = integral.GetMediaKey()
+					att.MediaSHA256 = integral.GetFileSHA256()
+					att.MediaEncSHA256 = integral.GetFileEncSHA256()
+					if integral.DirectPath != nil {
+						att.DirectPath = *integral.DirectPath
+					}
+				}
+			}
+		}
+	}
+
+	return att
+}
+
+// extractE2EEStickerAttachment extracts sticker attachment with full metadata
+func (c *Client) extractE2EEStickerAttachment(sticker *waConsumerApplication.ConsumerApplication_StickerMessage) *Attachment {
+	att := &Attachment{
+		Type: "sticker",
+	}
+
+	// Try to decode transport for metadata
+	transport, err := sticker.Decode()
+	if err == nil && transport != nil {
+		if ancillary := transport.GetAncillary(); ancillary != nil {
+			att.Width = int(ancillary.GetWidth())
+			att.Height = int(ancillary.GetHeight())
+		}
+		if integral := transport.GetIntegral(); integral != nil {
+			if waTransport := integral.GetTransport(); waTransport != nil {
+				if ancillary := waTransport.GetAncillary(); ancillary != nil {
+					att.MimeType = ancillary.GetMimetype()
+					att.FileSize = int64(ancillary.GetFileLength())
+				}
+				if integral := waTransport.GetIntegral(); integral != nil {
+					att.MediaKey = integral.GetMediaKey()
+					att.MediaSHA256 = integral.GetFileSHA256()
+					att.MediaEncSHA256 = integral.GetFileEncSHA256()
+					if integral.DirectPath != nil {
+						att.DirectPath = *integral.DirectPath
+					}
+				}
+			}
+		}
+	}
+
+	return att
 }

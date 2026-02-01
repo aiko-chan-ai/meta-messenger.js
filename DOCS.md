@@ -46,6 +46,7 @@
   * [`client.sendE2EEAudio()`](#sendE2EEAudio)
   * [`client.sendE2EEDocument()`](#sendE2EEDocument)
   * [`client.sendE2EESticker()`](#sendE2EESticker)
+  * [`client.downloadE2EEMedia()`](#downloadE2EEMedia)
   * [`client.getDeviceData()`](#getDeviceData)
 * [Miscellaneous](#miscellaneous)
   * [`client.unloadLibrary()`](#unloadLibrary)
@@ -997,6 +998,69 @@ await client.sendE2EESticker(chatJid, sticker, 'image/webp')
 
 ---
 
+<a name="downloadE2EEMedia"></a>
+## client.downloadE2EEMedia(options)
+
+Download and decrypt E2EE media from an attachment.
+
+__Parameters__
+
+* `options`: object
+  * `directPath`: string - Direct path from attachment
+  * `mediaKey`: string - Base64 encoded media key
+  * `mediaSha256`: string - Base64 encoded file SHA256
+  * `mediaEncSha256?`: string - Base64 encoded encrypted file SHA256 (recommended for verification)
+  * `mediaType`: string - Media type: `'image'`, `'video'`, `'audio'`, `'document'`, `'sticker'`
+  * `mimeType`: string - MIME type (e.g., 'image/jpeg')
+  * `fileSize`: number - File size in bytes
+
+__Returns__
+
+Promise<{ data: Buffer; mimeType: string; fileSize: number }>
+* `data`: Buffer - Decrypted media data
+* `mimeType`: string - MIME type
+* `fileSize`: number - File size
+
+__Example__
+
+```typescript
+import { writeFileSync } from 'fs'
+
+client.on('e2eeMessage', async (message) => {
+    if (message.attachments && message.attachments.length > 0) {
+        const attachment = message.attachments[0]
+        
+        // Check if attachment has required E2EE metadata
+        if (attachment.mediaKey && attachment.mediaSha256 && attachment.directPath) {
+            try {
+                const result = await client.downloadE2EEMedia({
+                    directPath: attachment.directPath,
+                    mediaKey: attachment.mediaKey,
+                    mediaSha256: attachment.mediaSha256,
+                    mediaEncSha256: attachment.mediaEncSha256, // Optional but recommended
+                    mediaType: attachment.type,
+                    mimeType: attachment.mimeType || 'application/octet-stream',
+                    fileSize: attachment.fileSize || 0,
+                })
+                
+                // Save to file
+                const extension = result.mimeType.split('/')[1] || 'bin'
+                writeFileSync(`downloaded.${extension}`, result.data)
+                console.log(`Downloaded ${result.fileSize} bytes`)
+            } catch (error) {
+                console.error('Failed to download E2EE media:', error)
+            }
+        }
+    }
+})
+```
+
+__Note__
+
+This method only works for E2EE (end-to-end encrypted) messages. For regular messages, use the `url` field in the attachment instead.
+
+---
+
 <a name="getDeviceData"></a>
 ## client.getDeviceData()
 
@@ -1543,6 +1607,11 @@ interface Attachment {
     duration?: number
     stickerId?: number
     previewUrl?: string
+    // For E2EE media download (only available in E2EE messages)
+    mediaKey?: string      // Base64 encoded encryption key
+    mediaSha256?: string   // Base64 encoded file SHA256
+    mediaEncSha256?: string // Base64 encoded encrypted file SHA256
+    directPath?: string    // Direct path for download
 }
 ```
 
