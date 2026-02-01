@@ -1,6 +1,6 @@
 {
   "name": "meta-messenger.js",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "description": "Unofficial Meta Messenger Chat API for NodeJS",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
