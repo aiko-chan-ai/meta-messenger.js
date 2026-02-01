@@ -19,7 +19,14 @@
   "publishConfig": {
     "access": "public"
   },
-  "keywords": [],
+  "keywords": [
+    "facebook",
+    "chat",
+    "api",
+    "messenger",
+    "e2ee",
+    "bot"
+  ],
   "repository": {
     "type": "git",
     "url": "git+https://github.com/aiko-chan-ai/meta-messenger.js.git"
