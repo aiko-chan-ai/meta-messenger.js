@@ -5,6 +5,9 @@
 
 [![Discord](https://img.shields.io/discord/1467543732323876975?style=for-the-badge&logo=discord&logoColor=white&label=Discord&color=%235865F2)](https://discord.gg/AbT6f9RMDe)
 
+> [!TIP]
+> **[Dự án này đã được di chuyển tới đây](https://github.com/yumi-team/meta-messenger.js). Kho lưu trữ gốc sẽ được lưu trữ (kỉ niệm).**
+
 Facebook hiện có API chính thức cho chat bots [tại đây](https://developers.facebook.com/docs/messenger-platform).
 
 API này là một trong những cách để tự động hóa các chức năng chat trên tài khoản người dùng. 
