@@ -29,17 +29,17 @@
   ],
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/aiko-chan-ai/meta-messenger.js.git"
+    "url": "git+https://github.com/yumi-team/meta-messenger.js.git"
   },
   "author": "aiko-chan-ai",
   "bugs": {
-    "url": "https://github.com/aiko-chan-ai/meta-messenger.js/issues"
+    "url": "https://github.com/yumi-team/meta-messenger.js/issues"
   },
   "files": [
     "dist",
     "scripts"
   ],
-  "homepage": "https://github.com/aiko-chan-ai/meta-messenger.js",
+  "homepage": "https://github.com/yumi-team/meta-messenger.js",
   "license": "AGPL-3.0-or-later",
   "dependencies": {
     "koffi": "^2.15.1"

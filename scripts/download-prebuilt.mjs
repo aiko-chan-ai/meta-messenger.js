@@ -24,7 +24,7 @@ function defaultRepoSlug() {
         const m = repo.url.match(/github\.com[:/]+([^#]+?)(?:\.git)?$/i);
         if (m) return m[1];
     }
-    return `${pkg.author}/${pkg.name}`;
+    return "yumi-team/meta-messenger.js";
 }
 
 function buildBaseURL() {

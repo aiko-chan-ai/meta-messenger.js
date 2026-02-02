@@ -5,6 +5,9 @@
 
 [![Discord](https://img.shields.io/discord/1467543732323876975?style=for-the-badge&logo=discord&logoColor=white&label=Discord&color=%235865F2)](https://discord.gg/AbT6f9RMDe)
 
+> [!TIP]
+> **[The project has been moved here](https://github.com/yumi-team/meta-messenger.js). The original repository will be archived.**
+
 Facebook now has an official API for chat bots [here](https://developers.facebook.com/docs/messenger-platform).
 
 This API is one of the ways to automate chat functions on user accounts.
